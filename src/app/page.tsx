@@ -13,7 +13,6 @@ export default function Home() {
 				body: JSON.stringify({ sandboxId: activeSandboxId })
 			});
 			const { vncUrl, sandboxId } = await response.json();
-			console.log(vncUrl, sandboxId);
 			setStreamUrl(vncUrl);
 			setActiveSandboxId(sandboxId);
 		}
