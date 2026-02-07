@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/components/Message";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Send } from "lucide-react";
 import type { Message as MessageType } from "@/hooks/useChat";
 
@@ -57,6 +58,9 @@ export function ChatPanel({
 
   return (
     <aside className="flex h-[50vh] w-full flex-col border-t border-border bg-background md:h-screen md:w-[30%] md:border-l md:border-t-0">
+      <div className="flex items-center justify-end border-b border-border p-3">
+        <ThemeToggle />
+      </div>
       <div className="flex-1 overflow-y-auto p-4">
         <div
           className="flex flex-col gap-3"
