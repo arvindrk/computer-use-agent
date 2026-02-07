@@ -29,6 +29,15 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
         messagesRef.current = messages;
     }, [messages]);
 
+    useEffect(() => {
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+            abortControllerRef.current?.abort();
+        };
+    }, []);
+
     const reset = useCallback(() => {
         setStreamingText("");
         setError(null);
@@ -100,8 +109,8 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
                         switch (parsedMessage?.type) {
                             case SSEEvent.INIT:
                                 const { vncUrl, sandboxId } = parsedMessage;
-                                if (onSandboxUpdate) {
-                                    onSandboxUpdate(vncUrl!, sandboxId!);
+                                if (onSandboxUpdate && vncUrl && sandboxId) {
+                                    onSandboxUpdate(vncUrl, sandboxId);
                                 }
                                 break;
                             case SSEEvent.TEXT:
@@ -142,32 +151,26 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
                 }
 
                 flushBuffer();
-            } catch (error) {
-                if (error instanceof DOMException && error.name === "AbortError") {
-                    console.log("Streaming aborted by user");
-                    const partialMessage = textBufferRef.current;
-                    setMessages((prev) => [
-                        ...prev,
-                        {
-                            role: "assistant",
-                            content:
-                                partialMessage +
-                                "\n[Canceled Request -- Displaying Partial Output]",
-                        },
-                    ]);
-                    reset();
-                    return;
-                }
-
-                console.log("Error in sending message: ", error);
-                setError(error instanceof Error ? error.message : "Unknown Error");
-                throw error;
             } finally {
                 reader.releaseLock();
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
-            setMessages((prev) => prev.slice(0, -1));
+            if (err instanceof DOMException && err.name === "AbortError") {
+                console.log("Streaming aborted by user");
+                if (textBufferRef.current) {
+                    setMessages((prev) => [
+                        ...prev,
+                        {
+                            role: "assistant",
+                            content: textBufferRef.current + "\n[Canceled Request -- Displaying Partial Output]",
+                        },
+                    ]);
+                }
+            } else {
+                const errorMessage = err instanceof Error ? err.message : "Unknown error";
+                console.log("Error in sending message: ", err);
+                setError(errorMessage);
+            }
         } finally {
             reset();
         }

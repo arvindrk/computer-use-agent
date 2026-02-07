@@ -5,14 +5,18 @@ import { SSEEvent, StreamChunk } from "@/lib/llm/types";
 import { CreateResponseStream } from "@/lib/llm";
 
 export async function POST(request: NextRequest) {
-  const abortController = new AbortController();
-  const { signal } = abortController;
+  const { signal } = request;
+  const { sandboxId, messages, provider = 'anthropic', model } = await request.json();
+  let desktop: Sandbox | undefined;
 
-  request.signal.addEventListener("abort", () => {
-    abortController.abort();
+  signal.addEventListener("abort", async () => {
+    if (desktop) {
+      await desktop.kill().catch((err: Error) => 
+        console.error("Failed to kill sandbox on abort:", err)
+      );
+    }
   });
 
-  const { sandboxId, messages, provider = 'anthropic', model } = await request.json();
 
   const e2bKey = process.env.E2B_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -33,7 +37,6 @@ export async function POST(request: NextRequest) {
 
   let activeSandboxId = sandboxId;
   let vncUrl: string | undefined;
-  let desktop;
 
   try {
     if (!activeSandboxId) {
