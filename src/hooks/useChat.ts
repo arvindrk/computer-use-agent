@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { parseSSE } from "@/lib/utils";
+import { formatAction, parseSSE } from "@/lib/utils";
 import { SSEEvent } from "@/lib/llm/types";
 
 export type Message = {
@@ -149,16 +149,6 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
                         }
                     }
                 }
-
-                if (streamBufferRef.current.trim()) {
-                    const parsedMessage = parseSSE(streamBufferRef.current);
-                    if (parsedMessage?.type === SSEEvent.TEXT && parsedMessage.content && typeof parsedMessage.content === "string") {
-                        setMessages((prev) => [...prev, {
-                            role: "assistant",
-                            content: parsedMessage.content as string,
-                        }]);
-                    }
-                }
             } finally {
                 reader.releaseLock();
             }
@@ -183,7 +173,9 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
     }, [sandboxId, onSandboxUpdate, reset]);
 
     const cancelStream = useCallback(() => {
-        abortControllerRef.current?.abort();
+        if (abortControllerRef.current) {
+            abortControllerRef.current?.abort();
+        }
     }, []);
 
     return {
@@ -194,51 +186,4 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
         sendMessage,
         cancelStream,
     };
-}
-
-function formatAction(action: unknown, toolName?: string): string {
-    if (!action || typeof action !== 'object') return "Action";
-
-    const actionObj = action as Record<string, unknown>;
-
-    if (toolName === "bash") {
-        return `bash: ${actionObj.command || "restart"}`;
-    }
-
-    if (toolName === "str_replace_editor") {
-        return `editor: ${actionObj.command} ${actionObj.path || ""}`;
-    }
-
-    const actionType = actionObj.action as string;
-
-    switch (actionType) {
-        case "left_click": {
-            const coord = actionObj.coordinate as [number, number];
-            return `Click [${coord[0]}, ${coord[1]}]`;
-        }
-        case "right_click": {
-            const coord = actionObj.coordinate as [number, number];
-            return `Right-click [${coord[0]}, ${coord[1]}]`;
-        }
-        case "double_click": {
-            const coord = actionObj.coordinate as [number, number];
-            return `Double-click [${coord[0]}, ${coord[1]}]`;
-        }
-        case "type":
-            return `Type: "${actionObj.text}"`;
-        case "key":
-            return `Press: ${actionObj.text}`;
-        case "scroll":
-            return `Scroll ${actionObj.scroll_direction}`;
-        case "mouse_move": {
-            const coord = actionObj.coordinate as [number, number];
-            return `Move mouse to [${coord[0]}, ${coord[1]}]`;
-        }
-        case "screenshot":
-            return "Screenshot";
-        case "wait":
-            return `Wait ${actionObj.duration}s`;
-        default:
-            return actionType || "Action";
-    }
 }
