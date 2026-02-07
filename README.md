@@ -57,7 +57,7 @@ The application implements a complete autonomous agent system with perception-ac
 ### Key Components
 
 - **Voice Pipeline**: Browser MediaRecorder → WebSocket → Deepgram Live API → Real-time transcript
-- **Agent Provider**: Claude Sonnet 4.5 with Computer Use API (beta 2025-01-24)
+- **Agent Provider**: Claude Agent with Computer Use API (beta 2025-01-24)
 - **Action Executor**: Translates agent decisions into desktop interactions
 - **Resolution Scaler**: Adapts between display resolution and Claude's vision constraints
 - **Streaming Protocol**: SSE for real-time agent reasoning, actions, and status updates
