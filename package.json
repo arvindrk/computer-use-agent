@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.38",
+    "@anthropic-ai/sdk": "^0.73.0",
     "@e2b/desktop": "^2.2.2",
     "ai": "^6.0.75",
     "class-variance-authority": "^0.7.1",

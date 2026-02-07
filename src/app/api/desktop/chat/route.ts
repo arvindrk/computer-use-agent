@@ -1,5 +1,8 @@
 import { Sandbox } from "@e2b/desktop";
 import { NextRequest, NextResponse } from "next/server";
+import { createLLMProvider } from "@/lib/llm/factory";
+import { SSEEvent, StreamChunk } from "@/lib/llm/types";
+import { CreateResponseStream } from "@/lib/llm";
 
 export async function POST(request: NextRequest) {
   const abortController = new AbortController();
@@ -9,14 +12,23 @@ export async function POST(request: NextRequest) {
     abortController.abort();
   });
 
-  const {
-    sandboxId,
-  } = await request.json();
+  const { sandboxId, messages, provider = 'anthropic', model } = await request.json();
 
   const e2bKey = process.env.E2B_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   if (!e2bKey) {
-    return new Response("E2B API key not found", { status: 500 });
+    return NextResponse.json(
+      { error: "E2B API key not configured" },
+      { status: 500 }
+    );
+  }
+
+  if (provider === 'anthropic' && !anthropicKey) {
+    return NextResponse.json(
+      { error: "Anthropic API key not configured" },
+      { status: 500 }
+    );
   }
 
   let activeSandboxId = sandboxId;
@@ -32,26 +44,38 @@ export async function POST(request: NextRequest) {
       });
       activeSandboxId = newSandbox.sandboxId;
       desktop = newSandbox;
+      await desktop.stream.start();
+      vncUrl = desktop.stream.getUrl();
     } else {
       desktop = await Sandbox.connect(activeSandboxId);
     }
 
     if (!desktop) {
-      return new Response("Failed to connect to sandbox", { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to connect to sandbox" },
+        { status: 500 }
+      );
     }
 
-    await desktop.stream.start();
-    vncUrl = desktop.stream.getUrl();
+    const llmProvider = createLLMProvider(provider, { model });
+    const llmStream = llmProvider.chat(messages, { signal });
 
-    return NextResponse.json(
-      {
-        vncUrl: vncUrl,
-        sandboxID: activeSandboxId
-      },
-      { status: 200 }
-    );
+    if (!sandboxId && activeSandboxId && vncUrl) {
+      async function* stream(): AsyncGenerator<StreamChunk> {
+        yield {
+          type: SSEEvent.INIT,
+          sandboxId: activeSandboxId,
+          vncUrl
+        }
+        yield* llmStream;
+      }
+
+      return CreateResponseStream(stream())
+    } else {
+      return CreateResponseStream(llmStream);
+    }
   } catch (error) {
-    console.log(error);
+    console.error("Desktop chat API error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

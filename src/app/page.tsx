@@ -1,35 +1,47 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
+import { useChat } from "@/hooks/useChat";
+import { ChatPanel } from "@/components/ChatPanel";
 
 export default function Home() {
-	const [streamUrl, setStreamUrl] = useState(null);
-	const [activeSandboxId, setActiveSandboxId] = useState("");
+  const [sandboxId, setSandboxId] = useState("");
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
 
-	useEffect(() => {
-		const streamSandBox = async () => {
-			const response = await fetch('/api/desktop/chat', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sandboxId: activeSandboxId })
-			});
-			const { vncUrl, sandboxId } = await response.json();
-			setStreamUrl(vncUrl);
-			setActiveSandboxId(sandboxId);
-		}
+  const handleSandboxUpdate = useCallback((vncUrl: string, newSandboxId: string) => {
+    setStreamUrl(vncUrl);
+    setSandboxId(newSandboxId);
+  }, []);
 
-		streamSandBox();
+  const { messages, isLoading, isStreaming, streamingText, error: chatError, sendMessage } = useChat({
+    sandboxId,
+    onSandboxUpdate: handleSandboxUpdate,
+  });
 
-	}, [activeSandboxId]);
+  return (
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans md:flex-row">
+      <main className="flex h-[50vh] w-full flex-col items-center justify-center bg-secondary md:h-full md:w-[70%]">
+        {!streamUrl ? (
+          <div className="flex items-center justify-center text-muted-foreground">
+            Send a message to initialize the sandbox
+          </div>
+        ) : (
+          <iframe
+            src={streamUrl}
+            className="h-full w-full border-0"
+            allow="clipboard-read; clipboard-write"
+            title="Desktop sandbox"
+          />
+        )}
+      </main>
 
-	return (
-		<div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-			<main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-				{streamUrl && (<iframe
-					src={streamUrl}
-					className="w-full h-100"
-					allow="clipboard-read; clipboard-write"
-				/>)}
-			</main>
-		</div>
-	);
+      <ChatPanel
+        messages={messages}
+        isLoading={isLoading}
+        isStreaming={isStreaming}
+        streamingText={streamingText}
+        error={chatError}
+        onSendMessage={sendMessage}
+      />
+    </div>
+  );
 }
