@@ -19,37 +19,37 @@ The application implements a complete autonomous agent system with perception-ac
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                          User Input Layer                            │
-│  Voice Input ──► Deepgram ──► WebSocket ──► Live Transcription     │
+│                          User Input Layer                           │
+│  Voice Input ──► Deepgram ──► WebSocket ──► Live Transcription      │
 │  Text Input  ──────────────────────────────► Chat Interface         │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      Agent Orchestration Layer                       │
-│  Next.js API Routes + Server-Sent Events (SSE) Streaming           │
+│                      Agent Orchestration Layer                      │
+│  Next.js API Routes + Server-Sent Events (SSE) Streaming            │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                       Agentic Loop (Claude)                          │
-│                                                                      │
+│                       Agentic Loop (Claude)                         │
+│                                                                     │
 │  1. Perception:   Take screenshot of desktop                        │
 │  2. Reasoning:    Analyze visual state + user intent                │
 │  3. Planning:     Decide which tool(s) to use                       │
 │  4. Action:       Execute computer/bash/editor tools                │
 │  5. Feedback:     Capture new screenshot                            │
 │  6. Iterate:      Loop until task complete                          │
-│                                                                      │
-│  Tools: computer_use (mouse/keyboard), bash, text_editor           │
+│                                                                     │
+│  Tools: computer_use (mouse/keyboard), bash, text_editor            │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Desktop Execution Layer                           │
-│  E2B Desktop Sandbox - Isolated Linux VM with VNC streaming        │
+│                    Desktop Execution Layer                          │
+│  E2B Desktop Sandbox - Isolated Linux VM with VNC streaming         │
 │  • Resolution scaling for Claude's vision API                       │
-│  • Action executor (clicks, typing, scrolling, bash)               │
+│  • Action executor (clicks, typing, scrolling, bash)                │
 │  • Screenshot capture and base64 encoding                           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -62,15 +62,6 @@ The application implements a complete autonomous agent system with perception-ac
 - **Resolution Scaler**: Adapts between display resolution and Claude's vision constraints
 - **Streaming Protocol**: SSE for real-time agent reasoning, actions, and status updates
 
-## Technical Stack
-
-- **Frontend**: Next.js 16.1 (React 19), TailwindCSS, shadcn/ui
-- **Agent**: Anthropic Claude Sonnet 4.5 with Computer Use tools
-- **Voice**: Deepgram Nova-2 live transcription
-- **Sandbox**: E2B Desktop Sandbox (isolated Linux VM with VNC)
-- **Streaming**: WebSocket (voice), Server-Sent Events (agent responses)
-- **Tools**: Computer use, Bash execution, Text editor
-
 ## How the Agent Works
 
 The agent operates in a continuous perception-action loop:
@@ -78,12 +69,12 @@ The agent operates in a continuous perception-action loop:
 1. **User sends command** (voice or text) - Natural language instruction
 2. **Agent initializes sandbox** - Spins up isolated Linux VM if needed
 3. **Agentic loop begins**:
-   - Agent takes screenshot of desktop
-   - Claude analyzes visual state and user intent
-   - Plans which computer use tools to invoke
-   - Executes actions (mouse clicks, typing, bash commands)
-   - Takes new screenshot to verify results
-   - Reasons about next steps
+    - Agent takes screenshot of desktop
+    - Claude analyzes visual state and user intent
+    - Plans which computer use tools to invoke
+    - Executes actions (mouse clicks, typing, bash commands)
+    - Takes new screenshot to verify results
+    - Reasons about next steps
 4. **Loop continues** until task is complete or user intervenes
 5. **Desktop streams live** - User watches agent work in real-time via VNC iframe
 
@@ -100,6 +91,15 @@ The agent operates in a continuous perception-action loop:
 ### 🛒 Find highly-rated dog toys on Amazon under $30
 
 ![Amazon Search](public/amazon-search.png)
+
+## Technical Stack
+
+- **Frontend**: Next.js
+- **Agent**: Claude Agent with Computer Use tools
+- **Voice**: Deepgram live transcription
+- **Sandbox**: E2B Desktop Sandbox (isolated Linux VM with VNC)
+- **Streaming**: WebSocket (voice), Server-Sent Events (agent responses)
+- **Tools**: Computer use, Bash execution, Text editor
 
 ## Prerequisites
 
