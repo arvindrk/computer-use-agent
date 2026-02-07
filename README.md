@@ -1,33 +1,112 @@
-# Chat-Controlled Remote Desktop Sandbox
+# Autonomous Agent for Remote Desktop Control
 
-Application for voice and chat-based control of a remote Linux virtual machine, streaming the desktop environment to your browser using [E2B Desktop Sandbox](https://e2b.dev/docs/template/examples/desktop).
+An autonomous AI agent with multi-modal input capabilities (voice + chat) that controls a remote Linux desktop environment through natural language. Built with Claude's Computer Use API, Deepgram live transcription, and E2B Desktop Sandbox.
 
 ## Features
 
-- 🖥️ Stream a full Linux desktop (Xfce) in your browser
-- 💬 **Chat-based remote desktop control** using Claude
-- 🔄 Persistent sandbox sessions with reconnection support
-- 🎯 Interactive desktop with mouse and keyboard control
-- 📋 Clipboard support (read/write)
-- 🤖 LLM-powered command execution and desktop automation
+- 🤖 **Fully autonomous agentic loops** - Agent perceives, reasons, acts, and adapts based on visual feedback
+- 🎤 **Multi-modal input** - Voice (via Deepgram) and text chat interfaces
+- 👁️ **Vision-powered control** - Agent analyzes screenshots to plan and execute actions
+- 🖱️ **Computer use tools** - Mouse clicks, keyboard input, bash commands, file editing
+- 🖥️ **Real-time desktop streaming** - Live Linux desktop (Xfce) streamed to browser via VNC
+- 🔄 **Persistent sessions** - Reconnect to existing sandbox sessions
+- 📋 **Clipboard integration** - Read/write clipboard access
+- ⚡ **Streaming responses** - Real-time agent reasoning and action updates
 
-## Coming soon
+## Architecture
 
-- 🎤 Voice-controlled VM interactions
+The application implements a complete autonomous agent system with perception-action loops:
 
-## How it works
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          User Input Layer                            │
+│  Voice Input ──► Deepgram ──► WebSocket ──► Live Transcription     │
+│  Text Input  ──────────────────────────────► Chat Interface         │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Agent Orchestration Layer                       │
+│  Next.js API Routes + Server-Sent Events (SSE) Streaming           │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                       Agentic Loop (Claude)                          │
+│                                                                      │
+│  1. Perception:   Take screenshot of desktop                        │
+│  2. Reasoning:    Analyze visual state + user intent                │
+│  3. Planning:     Decide which tool(s) to use                       │
+│  4. Action:       Execute computer/bash/editor tools                │
+│  5. Feedback:     Capture new screenshot                            │
+│  6. Iterate:      Loop until task complete                          │
+│                                                                      │
+│  Tools: computer_use (mouse/keyboard), bash, text_editor           │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Desktop Execution Layer                           │
+│  E2B Desktop Sandbox - Isolated Linux VM with VNC streaming        │
+│  • Resolution scaling for Claude's vision API                       │
+│  • Action executor (clicks, typing, scrolling, bash)               │
+│  • Screenshot capture and base64 encoding                           │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-1. User sends natural language commands via chat
-2. Claude interprets the command and generates desktop actions
-3. Actions are executed in the E2B sandbox (keyboard/mouse/screenshots)
-4. Desktop stream updates in real-time via iframe
-5. Results are reported back in chat
+### Key Components
+
+- **Voice Pipeline**: Browser MediaRecorder → WebSocket → Deepgram Live API → Real-time transcript
+- **Agent Provider**: Claude Sonnet 4.5 with Computer Use API (beta 2025-01-24)
+- **Action Executor**: Translates agent decisions into desktop interactions
+- **Resolution Scaler**: Adapts between display resolution and Claude's vision constraints
+- **Streaming Protocol**: SSE for real-time agent reasoning, actions, and status updates
+
+## Technical Stack
+
+- **Frontend**: Next.js 16.1 (React 19), TailwindCSS, shadcn/ui
+- **Agent**: Anthropic Claude Sonnet 4.5 with Computer Use tools
+- **Voice**: Deepgram Nova-2 live transcription
+- **Sandbox**: E2B Desktop Sandbox (isolated Linux VM with VNC)
+- **Streaming**: WebSocket (voice), Server-Sent Events (agent responses)
+- **Tools**: Computer use, Bash execution, Text editor
+
+## How the Agent Works
+
+The agent operates in a continuous perception-action loop:
+
+1. **User sends command** (voice or text) - Natural language instruction
+2. **Agent initializes sandbox** - Spins up isolated Linux VM if needed
+3. **Agentic loop begins**:
+   - Agent takes screenshot of desktop
+   - Claude analyzes visual state and user intent
+   - Plans which computer use tools to invoke
+   - Executes actions (mouse clicks, typing, bash commands)
+   - Takes new screenshot to verify results
+   - Reasons about next steps
+4. **Loop continues** until task is complete or user intervenes
+5. **Desktop streams live** - User watches agent work in real-time via VNC iframe
+
+## Screenshots
+
+### Home Page
+
+![Home Page](public/home-page.png)
+
+### 🏈 Who's performing at the Super Bowl halftime show in 2026?
+
+![Super Bowl Search](public/google-search.png)
+
+### 🛒 Find highly-rated dog toys on Amazon under $30
+
+![Amazon Search](public/amazon-search.png)
 
 ## Prerequisites
 
 - Node.js 20+
 - E2B API key ([get one here](https://e2b.dev))
 - Anthropic API key ([get one here](https://console.anthropic.com))
+- Deepgram API key ([get one here](https://deepgram.com))
 
 ## Setup
 
@@ -52,6 +131,7 @@ Add your API keys:
 ```
 E2B_API_KEY=your_e2b_key_here
 ANTHROPIC_API_KEY=your_anthropic_key_here
+DEEPGRAM_API_KEY=your_deepgram_key_here
 ```
 
 3. **Run the development server**
@@ -60,21 +140,11 @@ ANTHROPIC_API_KEY=your_anthropic_key_here
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and start chatting to control the desktop.
-
-## Architecture
-
-```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│   Browser   │ ◄─────► │   Next.js   │ ◄─────► │ E2B Desktop │
-│  ChatPanel  │         │  API Route  │         │   Sandbox   │
-│   +iframe   │         │  +Claude AI │         │             │
-└─────────────┘         └─────────────┘         └─────────────┘
-```
+Open [http://localhost:3000](http://localhost:3000) and start chatting or speaking to control the desktop.
 
 ## Learn More
 
-- [E2B Desktop Documentation](https://github.com/e2b-dev/desktop)
+- [E2B Desktop Documentation](https://e2b.dev/docs/template/examples/desktop)
+- [Anthropic Computer Use](https://docs.anthropic.com/en/docs/agents/computer-use)
+- [Deepgram Live Transcription](https://developers.deepgram.com/docs/streaming-live-transcription)
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Anthropic Claude](https://www.anthropic.com/claude)
-- [E2B Platform](https://e2b.dev)
