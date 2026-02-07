@@ -6,10 +6,7 @@ export interface Message {
 }
 
 export interface ChatOptions {
-  stream?: boolean;
   signal?: AbortSignal;
-  maxTokens?: number;
-  temperature?: number;
 }
 
 export enum SSEEvent {
@@ -34,10 +31,4 @@ export interface StreamChunk {
 
 export interface LLMProvider {
   executeAgentLoop(messages: Message[], options?: ChatOptions): AsyncGenerator<StreamChunk>;
-}
-
-export interface ProviderConfig {
-  apiKey?: string;
-  model?: string;
-  defaultMaxTokens?: number;
 }

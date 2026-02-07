@@ -4,6 +4,7 @@ import { AnthropicComputerProvider } from "@/lib/llm/providers/anthropic";
 import { CreateResponseStream } from "@/lib/llm";
 import { SSEEvent } from "@/lib/llm/types";
 import { StreamChunk } from "@/lib/llm/types";
+import { DESKTOP_TIMEOUT } from "@/lib/llm/constants";
 
 export async function POST(request: NextRequest) {
   const { signal } = request;
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
       desktop = await Sandbox.create({
         resolution,
         dpi: 96,
-        timeoutMs: 300_000,
+        timeoutMs: DESKTOP_TIMEOUT,
       });
       activeSandboxId = desktop.sandboxId;
       await desktop.stream.start();
