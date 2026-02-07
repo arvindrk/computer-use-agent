@@ -22,7 +22,7 @@ export default function Home() {
       <main className="flex h-[50vh] w-full flex-col items-center justify-center bg-secondary md:h-full md:w-[70%]">
         {!streamUrl ? (
           <div className="flex items-center justify-center text-muted-foreground">
-            Send a message to initialize the sandbox
+            Speak/Send a message to initialize the sandbox
           </div>
         ) : (
           <iframe

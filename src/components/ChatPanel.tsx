@@ -16,6 +16,26 @@ interface ChatPanelProps {
   onSendMessage: (content: string) => Promise<void>;
 }
 
+interface SuggestionChip {
+  icon: string;
+  query: string;
+}
+
+const SUGGESTIONS: SuggestionChip[] = [
+  {
+    icon: "🔍",
+    query: "Research Wispr Flow founders and create a summary"
+  },
+  {
+    icon: "🛒",
+    query: "Find highly-rated dog toys on Amazon under $30"
+  },
+  {
+    icon: "🏈",
+    query: "Who's performing at the Super Bowl halftime show in 2026?"
+  }
+];
+
 export function ChatPanel({
   messages,
   isLoading,
@@ -72,6 +92,10 @@ export function ChatPanel({
     }
   };
 
+  const handleChipClick = async (query: string) => {
+    await onSendMessage(query);
+  };
+
   return (
     <aside className="flex h-[50vh] w-full flex-col border-t border-border bg-background md:h-screen md:w-[30%] md:border-l md:border-t-0">
       <div className="flex items-center justify-end border-b border-border p-3">
@@ -87,7 +111,7 @@ export function ChatPanel({
         >
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-              Start chatting to control the desktop…
+              Start speaking/chatting to kick off a Lunix VM
             </div>
           ) : (
             <>
@@ -104,6 +128,24 @@ export function ChatPanel({
           <div ref={scrollRef} />
         </div>
       </div>
+
+      {messages.length === 0 && (
+        <div className="border-t border-border px-4 py-3">
+          <div className="flex flex-col gap-2">
+            {SUGGESTIONS.map((chip) => (
+              <button
+                key={chip.query}
+                onClick={() => handleChipClick(chip.query)}
+                disabled={isLoading}
+                className="flex items-start rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-left hover:bg-muted hover:scale-[1.02] transition-all whitespace-normal"
+              >
+                <span className="mr-3 text-lg flex-shrink-0">{chip.icon}</span>
+                <span className="leading-relaxed">{chip.query}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-border p-4">
         <div className="flex gap-2">
