@@ -5,8 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/components/Message";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Send } from "lucide-react";
+import { Send, Mic } from "lucide-react";
 import type { Message as MessageType } from "@/hooks/useChat";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 
 interface ChatPanelProps {
   messages: MessageType[];
@@ -24,6 +25,14 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const {
+    isRecording,
+    transcript,
+    error: voiceError,
+    startRecording,
+    stopRecording,
+  } = useVoiceRecording();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -52,6 +61,17 @@ export function ChatPanel({
     }
   };
 
+  const toggleVoiceMode = async () => {
+    if (isRecording) {
+      const finalTranscript = await stopRecording();
+      if (finalTranscript) {
+        await onSendMessage(finalTranscript);
+      }
+    } else {
+      await startRecording();
+    }
+  };
+
   return (
     <aside className="flex h-[50vh] w-full flex-col border-t border-border bg-background md:h-screen md:w-[30%] md:border-l md:border-t-0">
       <div className="flex items-center justify-end border-b border-border p-3">
@@ -76,9 +96,9 @@ export function ChatPanel({
               ))}
             </>
           )}
-          {error && (
+          {(error || voiceError) && (
             <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+              {error || voiceError}
             </div>
           )}
           <div ref={scrollRef} />
@@ -89,20 +109,30 @@ export function ChatPanel({
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={isRecording ? transcript : input}
+            onChange={(e) => !isRecording && setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message…"
+            placeholder={isRecording ? "Listening…" : "Type a message…"}
             aria-label="Chat message"
-            disabled={isLoading}
+            disabled={isLoading || isRecording}
             className="min-h-[36px] max-h-[144px] resize-none font-sans"
             rows={1}
           />
           <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleVoiceMode}
+            disabled={isLoading}
+            className={isRecording ? "text-red-500 h-[36px] w-[36px] shrink-0" : "h-[36px] w-[36px] shrink-0"}
+            aria-label={isRecording ? "Stop recording" : "Start voice input"}
+          >
+            <Mic className={isRecording ? "h-4 w-4 animate-pulse" : "h-4 w-4"} />
+          </Button>
+          <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             size="icon"
-            className="h-[36px] w-[36px] shrink-0 font-mono"
+            className="h-[36px] w-[36px] shrink-0"
             aria-label="Send message"
           >
             <Send className="h-4 w-4" />
