@@ -1,3 +1,5 @@
+import { ComputerAction, BashCommand, TextEditorCommand } from '@/lib/desktop/types';
+
 export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -15,6 +17,9 @@ export enum SSEEvent {
   TEXT = 'text',
   ERROR = 'error',
   DONE = 'done',
+  ACTION = 'action',
+  ACTION_COMPLETED = 'action_completed',
+  REASONING = 'reasoning',
 }
 
 export interface StreamChunk {
@@ -23,10 +28,12 @@ export interface StreamChunk {
   vncUrl?: string;
   content?: string;
   error?: string;
+  action?: ComputerAction | BashCommand | TextEditorCommand;
+  toolName?: string;
 }
 
 export interface LLMProvider {
-  chat(messages: Message[], options?: ChatOptions): AsyncGenerator<StreamChunk>;
+  executeAgentLoop(messages: Message[], options?: ChatOptions): AsyncGenerator<StreamChunk>;
 }
 
 export interface ProviderConfig {

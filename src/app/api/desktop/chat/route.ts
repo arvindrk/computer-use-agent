@@ -1,38 +1,29 @@
 import { Sandbox } from "@e2b/desktop";
-import { NextRequest, NextResponse } from "next/server";
-import { createLLMProvider } from "@/lib/llm/factory";
-import { SSEEvent, StreamChunk } from "@/lib/llm/types";
+import { NextRequest } from "next/server";
+import { AnthropicComputerProvider } from "@/lib/llm/providers/anthropic";
 import { CreateResponseStream } from "@/lib/llm";
+import { SSEEvent } from "@/lib/llm/types";
+import { StreamChunk } from "@/lib/llm/types";
 
 export async function POST(request: NextRequest) {
   const { signal } = request;
-  const { sandboxId, messages, provider = 'anthropic', model } = await request.json();
+  const { sandboxId, messages, resolution = [1024, 768] } = await request.json();
   let desktop: Sandbox | undefined;
 
   signal.addEventListener("abort", async () => {
     if (desktop) {
-      await desktop.kill().catch((err: Error) => 
+      await desktop.kill().catch((err: Error) =>
         console.error("Failed to kill sandbox on abort:", err)
       );
     }
   });
 
-
-  const e2bKey = process.env.E2B_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-
-  if (!e2bKey) {
-    return NextResponse.json(
-      { error: "E2B API key not configured" },
-      { status: 500 }
-    );
+  if (!process.env.E2B_API_KEY) {
+    return Response.json({ error: "E2B API key not configured" }, { status: 500 });
   }
 
-  if (provider === 'anthropic' && !anthropicKey) {
-    return NextResponse.json(
-      { error: "Anthropic API key not configured" },
-      { status: 500 }
-    );
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json({ error: "Anthropic API key not configured" }, { status: 500 });
   }
 
   let activeSandboxId = sandboxId;
@@ -40,13 +31,12 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!activeSandboxId) {
-      const newSandbox = await Sandbox.create({
-        resolution: [1024, 768],
+      desktop = await Sandbox.create({
+        resolution,
         dpi: 96,
         timeoutMs: 300_000,
       });
-      activeSandboxId = newSandbox.sandboxId;
-      desktop = newSandbox;
+      activeSandboxId = desktop.sandboxId;
       await desktop.stream.start();
       vncUrl = desktop.stream.getUrl();
     } else {
@@ -54,14 +44,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (!desktop) {
-      return NextResponse.json(
-        { error: "Failed to connect to sandbox" },
-        { status: 500 }
-      );
+      return Response.json({ error: "Failed to connect to sandbox" }, { status: 500 });
     }
 
-    const llmProvider = createLLMProvider(provider, { model });
-    const llmStream = llmProvider.chat(messages, { signal });
+    const provider = new AnthropicComputerProvider({
+      desktop,
+      resolution,
+    });
+
+    const agentStream = provider.executeAgentLoop(messages, { signal });
 
     if (!sandboxId && activeSandboxId && vncUrl) {
       async function* stream(): AsyncGenerator<StreamChunk> {
@@ -69,19 +60,15 @@ export async function POST(request: NextRequest) {
           type: SSEEvent.INIT,
           sandboxId: activeSandboxId,
           vncUrl
-        }
-        yield* llmStream;
+        };
+        yield* agentStream;
       }
-
-      return CreateResponseStream(stream())
-    } else {
-      return CreateResponseStream(llmStream);
+      return CreateResponseStream(stream());
     }
+
+    return CreateResponseStream(agentStream);
   } catch (error) {
     console.error("Desktop chat API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

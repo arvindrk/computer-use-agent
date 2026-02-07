@@ -3,8 +3,12 @@ import { parseSSE } from "@/lib/utils";
 import { SSEEvent } from "@/lib/llm/types";
 
 export type Message = {
-    role: "user" | "assistant";
+    role: "user" | "assistant" | "action";
     content: string;
+    action?: unknown;
+    toolName?: string;
+    status?: "pending" | "completed";
+    isReasoning?: boolean;
 };
 
 interface UseChatOptions {
@@ -16,13 +20,10 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isStreaming, setIsStreaming] = useState<boolean>(false);
-    const [streamingText, setStreamingText] = useState<string>("")
     const [error, setError] = useState<string | null>(null);
 
     const messagesRef = useRef<Message[]>([]);
     const streamBufferRef = useRef<string>("");
-    const textBufferRef = useRef<string>("");
-    const animationFrameRef = useRef<number | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
@@ -31,27 +32,16 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
 
     useEffect(() => {
         return () => {
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
             abortControllerRef.current?.abort();
         };
     }, []);
 
     const reset = useCallback(() => {
-        setStreamingText("");
         setError(null);
         setIsLoading(false);
         setIsStreaming(false);
-        textBufferRef.current = "";
         streamBufferRef.current = "";
-        animationFrameRef.current = null;
         abortControllerRef.current = null;
-    }, []);
-
-    const flushBuffer = useCallback(() => {
-        setStreamingText(textBufferRef.current);
-        animationFrameRef.current = null;
     }, []);
 
     const sendMessage = useCallback(async (content: string) => {
@@ -59,10 +49,6 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
         setMessages((prev) => [...prev, userMessage]);
 
         abortControllerRef.current = new AbortController();
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-            animationFrameRef.current = null;
-        }
         setIsLoading(true);
         setError(null);
 
@@ -114,26 +100,51 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
                                 }
                                 break;
                             case SSEEvent.TEXT:
-                                textBufferRef.current += parsedMessage?.content || "";
-                                if (!animationFrameRef.current) {
-                                    animationFrameRef.current = requestAnimationFrame(flushBuffer);
+                                if (parsedMessage?.content && typeof parsedMessage.content === "string") {
+                                    setMessages((prev) => [...prev, {
+                                        role: "assistant",
+                                        content: parsedMessage.content as string,
+                                    }]);
                                 }
                                 break;
+                            case SSEEvent.REASONING:
+                                if (parsedMessage?.content && typeof parsedMessage.content === "string") {
+                                    setMessages((prev) => [...prev, {
+                                        role: "assistant",
+                                        content: parsedMessage.content as string,
+                                        isReasoning: true,
+                                    }]);
+                                }
+                                break;
+                            case SSEEvent.ACTION:
+                                setMessages((prev) => [...prev, {
+                                    role: "action",
+                                    content: formatAction(parsedMessage.action, parsedMessage.toolName),
+                                    action: parsedMessage.action,
+                                    toolName: parsedMessage.toolName,
+                                    status: "pending"
+                                }]);
+                                break;
+                            case SSEEvent.ACTION_COMPLETED:
+                                setMessages((prev) => {
+                                    const lastActionIndex = [...prev].reverse()
+                                        .findIndex(m => m.role === "action" && m.status === "pending");
+                                    if (lastActionIndex === -1) return prev;
+
+                                    const actualIndex = prev.length - 1 - lastActionIndex;
+                                    return prev.map((msg, i) =>
+                                        i === actualIndex ? { ...msg, status: "completed" as const } : msg
+                                    );
+                                });
+                                break;
                             case SSEEvent.DONE:
-                                const assistantMessage: Message = {
-                                    role: "assistant",
-                                    content: textBufferRef.current,
-                                };
-                                setMessages((prev) => [...prev, assistantMessage]);
                                 break;
                             case SSEEvent.ERROR:
                                 setError(parsedMessage.error || "Stream error");
-                                if (textBufferRef.current) {
-                                    setMessages(prev => [...prev, {
-                                        role: "assistant",
-                                        content: textBufferRef.current + "\n[Error occurred]"
-                                    }]);
-                                }
+                                setMessages(prev => [...prev, {
+                                    role: "assistant",
+                                    content: "[Error occurred]"
+                                }]);
                                 break;
                         }
                     }
@@ -141,31 +152,26 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
 
                 if (streamBufferRef.current.trim()) {
                     const parsedMessage = parseSSE(streamBufferRef.current);
-                    if (parsedMessage?.type === SSEEvent.TEXT) {
-                        textBufferRef.current += parsedMessage.content;
+                    if (parsedMessage?.type === SSEEvent.TEXT && parsedMessage.content && typeof parsedMessage.content === "string") {
+                        setMessages((prev) => [...prev, {
+                            role: "assistant",
+                            content: parsedMessage.content as string,
+                        }]);
                     }
                 }
-
-                if (animationFrameRef.current) {
-                    cancelAnimationFrame(animationFrameRef.current);
-                }
-
-                flushBuffer();
             } finally {
                 reader.releaseLock();
             }
         } catch (err) {
             if (err instanceof DOMException && err.name === "AbortError") {
                 console.log("Streaming aborted by user");
-                if (textBufferRef.current) {
-                    setMessages((prev) => [
-                        ...prev,
-                        {
-                            role: "assistant",
-                            content: textBufferRef.current + "\n[Canceled Request -- Displaying Partial Output]",
-                        },
-                    ]);
-                }
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        role: "assistant",
+                        content: "[Canceled Request]",
+                    },
+                ]);
             } else {
                 const errorMessage = err instanceof Error ? err.message : "Unknown error";
                 console.log("Error in sending message: ", err);
@@ -174,7 +180,7 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
         } finally {
             reset();
         }
-    }, [flushBuffer, sandboxId, onSandboxUpdate, reset]);
+    }, [sandboxId, onSandboxUpdate, reset]);
 
     const cancelStream = useCallback(() => {
         abortControllerRef.current?.abort();
@@ -185,8 +191,54 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
         messages,
         isLoading,
         isStreaming,
-        streamingText,
         sendMessage,
         cancelStream,
     };
+}
+
+function formatAction(action: unknown, toolName?: string): string {
+    if (!action || typeof action !== 'object') return "Action";
+
+    const actionObj = action as Record<string, unknown>;
+
+    if (toolName === "bash") {
+        return `bash: ${actionObj.command || "restart"}`;
+    }
+
+    if (toolName === "str_replace_editor") {
+        return `editor: ${actionObj.command} ${actionObj.path || ""}`;
+    }
+
+    const actionType = actionObj.action as string;
+
+    switch (actionType) {
+        case "left_click": {
+            const coord = actionObj.coordinate as [number, number];
+            return `Click [${coord[0]}, ${coord[1]}]`;
+        }
+        case "right_click": {
+            const coord = actionObj.coordinate as [number, number];
+            return `Right-click [${coord[0]}, ${coord[1]}]`;
+        }
+        case "double_click": {
+            const coord = actionObj.coordinate as [number, number];
+            return `Double-click [${coord[0]}, ${coord[1]}]`;
+        }
+        case "type":
+            return `Type: "${actionObj.text}"`;
+        case "key":
+            return `Press: ${actionObj.text}`;
+        case "scroll":
+            return `Scroll ${actionObj.scroll_direction}`;
+        case "mouse_move": {
+            const coord = actionObj.coordinate as [number, number];
+            return `Move mouse to [${coord[0]}, ${coord[1]}]`;
+        }
+        case "screenshot":
+            return "Screenshot";
+        case "wait":
+            return `Wait ${actionObj.duration}s`;
+        default:
+            return actionType || "Action";
+    }
 }

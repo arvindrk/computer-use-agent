@@ -11,8 +11,6 @@ import type { Message as MessageType } from "@/hooks/useChat";
 interface ChatPanelProps {
   messages: MessageType[];
   isLoading: boolean;
-  isStreaming: boolean;
-  streamingText: string;
   error: string | null;
   onSendMessage: (content: string) => Promise<void>;
 }
@@ -20,8 +18,6 @@ interface ChatPanelProps {
 export function ChatPanel({
   messages,
   isLoading,
-  isStreaming,
-  streamingText,
   error,
   onSendMessage,
 }: ChatPanelProps) {
@@ -64,6 +60,7 @@ export function ChatPanel({
       <div className="flex-1 overflow-y-auto p-4">
         <div
           className="flex flex-col gap-3"
+          style={{ contentVisibility: 'auto' }}
           role="log"
           aria-live="polite"
           aria-relevant="additions"
@@ -77,12 +74,6 @@ export function ChatPanel({
               {messages.map((message, index) => (
                 <Message key={index} message={message} />
               ))}
-              {isStreaming && streamingText && (
-                <Message
-                  message={{ role: "assistant", content: streamingText }}
-                  isStreaming
-                />
-              )}
             </>
           )}
           {error && (
