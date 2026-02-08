@@ -113,9 +113,7 @@ The agent operates in a continuous perception-action loop:
 1. **Clone and install dependencies**
 
 ```bash
-npm install
-# or
-pnpm install
+bun install
 ```
 
 2. **Configure environment variables**
@@ -137,7 +135,7 @@ DEEPGRAM_API_KEY=your_deepgram_key_here
 3. **Run the development server**
 
 ```bash
-npm run dev
+bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and start chatting or speaking to control the desktop.
