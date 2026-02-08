@@ -55,7 +55,7 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
         try {
             const response = await fetch("/api/desktop/chat", {
                 method: "POST",
-                headers: { "Content-Type": "text/event-stream" },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     sandboxId,
                     messages: [...messagesRef.current, userMessage],
