@@ -1,6 +1,6 @@
 # Autonomous Agent for Remote Desktop Control
 
-An autonomous AI agent with multi-modal input capabilities (voice + chat) that controls a remote Linux desktop environment through natural language. Built with Claude's Computer Use API, Deepgram live transcription, and E2B Desktop Sandbox.
+An autonomous AI agent with multi-modal capabilities (vision + voice + chat) that controls a remote Linux desktop environment through natural language. Built with Claude's Computer Use API, Deepgram live transcription, and E2B Desktop Sandbox.
 
 ## Features
 

@@ -5,7 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/components/Message";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Send, Mic } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Send, Mic, Square } from "lucide-react";
 import type { Message as MessageType } from "@/hooks/useChat";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 
@@ -98,7 +104,16 @@ export function ChatPanel({
 
   return (
     <aside className="flex h-[50vh] w-full flex-col border-t border-border bg-background md:h-screen md:w-[30%] md:border-l md:border-t-0">
-      <div className="flex items-center justify-end border-b border-border p-3">
+      <div className={`flex min-h-[52px] items-center ${isRecording ? 'justify-between' : 'justify-end'} border-b border-border p-3`}>
+        {isRecording && (
+          <div className="flex items-center gap-2 text-sm font-medium text-red-500">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+            </span>
+            Recording
+          </div>
+        )}
         <ThemeToggle />
       </div>
       <div className="flex-1 overflow-y-auto p-4">
@@ -148,38 +163,58 @@ export function ChatPanel({
       )}
 
       <div className="border-t border-border p-4">
-        <div className="flex gap-2">
-          <Textarea
-            ref={textareaRef}
-            value={isRecording ? transcript : input}
-            onChange={(e) => !isRecording && setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isRecording ? "Listening…" : "Type a message…"}
-            aria-label="Chat message"
-            disabled={isLoading || isRecording}
-            className="min-h-[36px] max-h-[144px] resize-none font-sans"
-            rows={1}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleVoiceMode}
-            disabled={isLoading}
-            className={isRecording ? "text-red-500 h-[36px] w-[36px] shrink-0" : "h-[36px] w-[36px] shrink-0"}
-            aria-label={isRecording ? "Stop recording" : "Start voice input"}
-          >
-            <Mic className={isRecording ? "h-4 w-4 animate-pulse" : "h-4 w-4"} />
-          </Button>
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            size="icon"
-            className="h-[36px] w-[36px] shrink-0"
-            aria-label="Send message"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+        <TooltipProvider>
+          <div className="flex gap-2">
+            <Textarea
+              ref={textareaRef}
+              value={isRecording ? transcript : input}
+              onChange={(e) => !isRecording && setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isRecording ? "Listening…" : "Type a message…"}
+              aria-label="Chat message"
+              disabled={isLoading || isRecording}
+              className="min-h-[36px] max-h-[144px] resize-none font-sans"
+              rows={1}
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isRecording ? "default" : "ghost"}
+                  size="icon"
+                  onClick={toggleVoiceMode}
+                  disabled={isLoading}
+                  className={isRecording ? "bg-red-500 hover:bg-red-600 text-white h-[36px] w-[36px] shrink-0" : "h-[36px] w-[36px] shrink-0"}
+                  aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                >
+                  {isRecording ? (
+                    <Square className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isRecording ? "Stop recording" : "Start recording"}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  size="icon"
+                  className="h-[36px] w-[36px] shrink-0"
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Send message (⏎)</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
     </aside>
   );
