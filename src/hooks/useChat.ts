@@ -99,14 +99,6 @@ export function useChat({ sandboxId, onSandboxUpdate }: UseChatOptions) {
                                     onSandboxUpdate(vncUrl, sandboxId);
                                 }
                                 break;
-                            case SSEEvent.TEXT:
-                                if (parsedMessage?.content && typeof parsedMessage.content === "string") {
-                                    setMessages((prev) => [...prev, {
-                                        role: "assistant",
-                                        content: parsedMessage.content as string,
-                                    }]);
-                                }
-                                break;
                             case SSEEvent.REASONING:
                                 if (parsedMessage?.content && typeof parsedMessage.content === "string") {
                                     setMessages((prev) => [...prev, {

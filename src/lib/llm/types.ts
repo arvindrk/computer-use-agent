@@ -11,7 +11,6 @@ export interface ChatOptions {
 
 export enum SSEEvent {
   INIT = 'init',
-  TEXT = 'text',
   ERROR = 'error',
   DONE = 'done',
   ACTION = 'action',

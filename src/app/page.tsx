@@ -12,7 +12,7 @@ export default function Home() {
     setSandboxId(newSandboxId);
   }, []);
 
-  const { messages, isLoading, error: chatError, sendMessage } = useChat({
+  const { messages, isLoading, isStreaming, error: chatError, sendMessage, cancelStream } = useChat({
     sandboxId,
     onSandboxUpdate: handleSandboxUpdate,
   });
@@ -37,8 +37,10 @@ export default function Home() {
       <ChatPanel
         messages={messages}
         isLoading={isLoading}
+        isStreaming={isStreaming}
         error={chatError}
         onSendMessage={sendMessage}
+        onCancelStream={cancelStream}
       />
     </div>
   );

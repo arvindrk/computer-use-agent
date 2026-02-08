@@ -14,12 +14,15 @@ import {
 import { Send, Mic, Square } from "lucide-react";
 import type { Message as MessageType } from "@/hooks/useChat";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useKeyboardRecording } from "@/hooks/useKeyboardRecording";
 
 interface ChatPanelProps {
   messages: MessageType[];
   isLoading: boolean;
+  isStreaming: boolean;
   error: string | null;
   onSendMessage: (content: string) => Promise<void>;
+  onCancelStream: () => void;
 }
 
 interface SuggestionChip {
@@ -45,8 +48,10 @@ const SUGGESTIONS: SuggestionChip[] = [
 export function ChatPanel({
   messages,
   isLoading,
+  isStreaming,
   error,
   onSendMessage,
+  onCancelStream,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -60,6 +65,18 @@ export function ChatPanel({
     stopRecording,
   } = useVoiceRecording();
 
+  useKeyboardRecording({
+    onStart: startRecording,
+    onStop: async () => {
+      const finalTranscript = await stopRecording();
+      if (finalTranscript) {
+        await onSendMessage(finalTranscript);
+      }
+    },
+    isRecording,
+    disabled: isLoading || isStreaming,
+  });
+
   useEffect(() => {
     if (scrollRef.current) {
       const prefersReducedMotion = window.matchMedia(
@@ -72,7 +89,7 @@ export function ChatPanel({
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isStreaming) return;
 
     const content = input.trim();
     setInput("");
@@ -125,8 +142,24 @@ export function ChatPanel({
           aria-relevant="additions"
         >
           {messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-              Start speaking/chatting to kick off a Lunix VM
+            <div className="flex h-full flex-col items-center justify-center gap-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Start speaking/chatting to kick off a Lunix VM
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 px-3 py-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                  <Mic className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex flex-col text-left gap-1">
+                  <p className="font-medium text-sm">Quick Recording</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    Hold <kbd className="px-2 py-0.5 bg-muted border rounded text-[10px] font-mono">Space</kbd> to record
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -151,7 +184,7 @@ export function ChatPanel({
               <button
                 key={chip.query}
                 onClick={() => handleChipClick(chip.query)}
-                disabled={isLoading}
+                disabled={isLoading || isStreaming}
                 className="flex items-start rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-left hover:bg-muted hover:scale-[1.02] transition-all whitespace-normal"
               >
                 <span className="mr-3 text-lg flex-shrink-0">{chip.icon}</span>
@@ -172,7 +205,7 @@ export function ChatPanel({
               onKeyDown={handleKeyDown}
               placeholder={isRecording ? "Listening…" : "Type a message…"}
               aria-label="Chat message"
-              disabled={isLoading || isRecording}
+              disabled={isLoading || isRecording || isStreaming}
               className="min-h-[36px] max-h-[144px] resize-none font-sans"
               rows={1}
             />
@@ -182,7 +215,7 @@ export function ChatPanel({
                   variant={isRecording ? "default" : "ghost"}
                   size="icon"
                   onClick={toggleVoiceMode}
-                  disabled={isLoading}
+                  disabled={isLoading || isStreaming}
                   className={isRecording ? "bg-red-500 hover:bg-red-600 text-white h-[36px] w-[36px] shrink-0" : "h-[36px] w-[36px] shrink-0"}
                   aria-label={isRecording ? "Stop recording" : "Start voice input"}
                 >
@@ -194,23 +227,27 @@ export function ChatPanel({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isRecording ? "Stop recording" : "Start recording"}</p>
+                <p>{isRecording ? "Stop recording" : "Start recording (or hold Space)"}</p>
               </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
+                  onClick={isStreaming ? onCancelStream : handleSend}
+                  disabled={isStreaming ? false : (!input.trim() || isLoading)}
                   size="icon"
-                  className="h-[36px] w-[36px] shrink-0"
-                  aria-label="Send message"
+                  className={isStreaming ? "bg-red-500 hover:bg-red-600 text-white h-[36px] w-[36px] shrink-0" : "h-[36px] w-[36px] shrink-0"}
+                  aria-label={isStreaming ? "Stop agent execution" : "Send message"}
                 >
-                  <Send className="h-4 w-4" />
+                  {isStreaming ? (
+                    <Square className="h-4 w-4" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Send message (⏎)</p>
+                <p>{isStreaming ? "Stop agent execution" : "Send message (⏎)"}</p>
               </TooltipContent>
             </Tooltip>
           </div>

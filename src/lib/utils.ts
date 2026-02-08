@@ -8,16 +8,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export function extractErrorMessage(error: unknown): string {
 	if (error && typeof error === 'object' && 'status' in error && error.status === 429) {
-		const retryAfter = error && typeof error === 'object' && 'headers' in error
-			? (error.headers as Record<string, string>)?.['retry-after']
-			: undefined;
-
-		if (retryAfter) {
-			return `Rate limit exceeded. You can retry in ${retryAfter} seconds.`;
-		} else {
-			return "Rate limit exceeded. Please try again later.";
-		}
-	} else if (error instanceof Error) {
+		return "Rate limit exceeded. Please try again later.";
+	}
+	
+	if (error instanceof Error) {
 		return error.message;
 	}
 
